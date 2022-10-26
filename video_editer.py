@@ -20,7 +20,7 @@ class VideoEditer:
         logging.getLogger().setLevel(logging.INFO)
 
 
-    def createClip(self, timeStamps):
+    def createClips(self, timeStamps):
         videoFileName = 'rawVideos/video.mp4'
         audioFileName = 'rawVideos/audio.mp4'
         fileIdentifier = ''
@@ -41,9 +41,14 @@ class VideoEditer:
             fileIdentifier += '1'
             end = time.time()
             logging.info('Split {} in {} seconds'.format(videoClipFileName, int(end - start)))
+        
+        # delete these files to free space
+        os.remove(videoFileName)
+        os.remove(audioFileName)
+
+
 
     def addLogoTopRight(self):
-        # the logo to add to the pic
 
         files = os.listdir('videoclips')
         outputFilenameId = ''
@@ -63,11 +68,15 @@ class VideoEditer:
             final.write_videofile(outputFilename)
             outputFilenameId += '1'
 
+        for filename in files:
+            os.remove('videoclips/' + filename)
+
+
     def combineVideoAndAudio(self):
         logoFiles = os.listdir('logoVideoClips')
-        outputFilenameId = '111111111111111111'
+        outputFilenameId = ''
 
-        for f in range(18, len(logoFiles)):
+        for f in range(0, len(logoFiles)):
 
             videoFilename = 'logoVideoClips/' + logoFiles[f]
             fileNumber = videoFilename.replace('logoVideoClips/logoVideo', '').replace('.mp4', '')
@@ -78,15 +87,36 @@ class VideoEditer:
             ffmpeg.output(audio_stream, video_stream, 'combinedClips/out{}.mp4'.format(outputFilenameId)).run()
             outputFilenameId += '1'
 
-    def combineClips(self):
-        # find *.mp4 | sed 's:\ :\\\ :g'| sed 's/^/file /' > fl.txt; sort -r fl.txt | tee sorted.txt; ffmpeg -f concat -i sorted.txt -c copy output.mp4; rm fl.txt; rm sorted.txt
+        # delete the individual video and audio clips 
+        files = os.listdir('logoVideoClips')
+        for filename in files:
+            os.remove('logoVideoClips/' + filename)
+        files = os.listdir('audioclips')
+        for filename in files:
+            os.remove('audioclips/' + filename)
+
+    def combineClips(self, finalFilename):
         
-        combineClipsCommand = ['find', 'combinedClips/*.mp4', '|', 'sed', 's:\ :\\\ :g', '|', 'sed', 's/^/file /', '>', 'combinedClips/fl.txt;', 'sort', '-r', 'combinedClips/fl.txt', '|', 'tee', 'combinedClips/sorted.txt;', 'ffmpeg', '-f', 'concat', '-i', 'combinedClips/sorted.txt', '-c', 'copy', 'combinedClips/output.mp4;', 'rm', 'combinedClips/fl.txt;', 'rm', 'combinedClips/sorted.txt']
-        subprocess.run(combineClipsCommand)
+        # combineClipsCommand = ['find', 'combinedClips/*.mp4', '|', 'sed', '\'s:\ :\\\ :g\'', '|', 'sed', '\'s/^/file /\'', '>', 'combinedClips/fl.txt;', 'sort', '-r', 'combinedClips/fl.txt', '|', 'tee', 'combinedClips/sorted.txt;', 'ffmpeg', '-f', 'concat', '-i', 'combinedClips/sorted.txt', '-c', 'copy', '\"finishedVideo/{}\";'.format(finalFilename), 'rm', 'combinedClips/fl.txt;', 'rm', 'combinedClips/sorted.txt']
+        
+        # write all files in dir to .txt
+        with open('combinedClips/sorted.txt', 'w') as f:
+            filenames = os.listdir('combinedClips/') 
+            for filename in filenames:
+                f.write('file {}\n'.format(filename))
+            f.close()
+  
 
-        deleteClipsCommand = ['rm audioclips/*']
-        subprocess.run(deleteClipsCommand)
+        # combine all the files in the dir
+        os.chdir('/home/ec2-user/workspace/Twitch2Youtube/combinedClips/')
+        combineFiles = ['ffmpeg -f concat -i sorted.txt -c copy \"/home/ec2-user/workspace/Twitch2Youtube/finishedVideos/{}\"'.format(finalFilename)]
+        subprocess.run(combineFiles, shell=True)
+        os.chdir('/home/ec2-user/workspace/Twitch2Youtube/')
 
+        # remove all the old clips
+        files = os.listdir('combinedClips')
+        for filename in files:
+            os.remove('combinedClips/' + filename)
 
     def createThumbnail(self, urlLeft, urlRight, gameNumber, outputFileName):
 
@@ -98,7 +128,6 @@ class VideoEditer:
         with open('thumbnailCreation/rightTeam.png', 'wb') as handler:
             handler.write(img_data)
 
-        from PIL import Image
         #Read the three images
         image1 = Image.open('thumbnailCreation/leftTeam.png')
         image2 = Image.open('thumbnailCreation/rightTeam.png')
@@ -108,7 +137,7 @@ class VideoEditer:
         size2 = image2.size
         background_size = background.size
 
-        # get two points from each line in the X shape to center the team logos perfectly
+        # get two points from each line in the X shape of the background to center/size the team logos perfectly
         topLeftPoint1 = [880, 0]
         topLeftPoint2 = [background_size[0] - 1925,background_size[1]]
         botLeftPoint1 = [880,background_size[1]]

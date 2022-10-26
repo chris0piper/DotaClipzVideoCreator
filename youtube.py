@@ -69,7 +69,7 @@ class Youtube:
                 continue
             videoNames.append(title)
             finalIds.append(wId.split('"')[0])
-        return finalIds, videoNames, thumbnails
+        return finalIds, videoNames
 
 
     def getAllTeamNamesAndLogos(self):

@@ -97,7 +97,6 @@ class VideoAnalyser:
             currentScore = lastKillCount
             
             if scores != None:
-                # this means the draft just ended
                 currentScore = scores[0] + scores[1]
 
             # no score and not drafting means we hit end of game
@@ -117,6 +116,8 @@ class VideoAnalyser:
                     currentTime = int(frameCount / FRAMES_PER_SECOND)
                     rawClips.append([currentTime - 20, currentTime])
                     killsPerClip.append(currentScore - lastKillCount)
+                    print('GAME JUST ENDED: Time - ' + str(int(frameCount / 60 / 60)) + ':' + str(int((frameCount/60)%60)))
+
                     break
 
             # if no score was found or it remained the same, keep looking at the current step sie
@@ -169,15 +170,7 @@ class VideoAnalyser:
         end = time.time()
         logging.info('Video analyzed for optimal timestamps in {} seconds. Number of frames BEFORE DRAFT: {} Number of frames AFTER DRAFT: {}  TOTAL: {}'.format(int(end - start), numberOfFramesCheckedBeforeDraft, numberOfFramesCheckedAfterDraft, numberOfFramesCheckedAfterDraft + numberOfFramesCheckedBeforeDraft))
 
-        return fixOverlappingClips(rawClips, killsPerClip)
-
-
-    # def 
-
-
-
-
-
+        return self.fixOverlappingClips(rawClips, killsPerClip)
 
     def getScoreFromFrame(self, frame):
 
@@ -299,7 +292,6 @@ class VideoAnalyser:
 
         inBigClip = False
 
-        # print(rawClips)
         for i in range(0, len(rawClips)):
             timestamp = rawClips[i]
             killcount = rawKills[i]
@@ -329,5 +321,5 @@ class VideoAnalyser:
         if inBigClip:
             finalClips.append(largerClip)
             largerClip = []
-        print(finalClips)
-        print(finalKills)
+
+        return finalClips, finalKills
