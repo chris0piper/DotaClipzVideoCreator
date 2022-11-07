@@ -31,12 +31,6 @@ processedVideos = set()
 for videoId in videoIds:
     processedVideos.add(videoId)
 
-processedVideos.remove(videoIds[0]) #TODO REMOVE
-processedVideos.remove(videoIds[1])
-processedVideos.remove(videoIds[2])
-processedVideos.remove(videoIds[3]) #TODO REMOVE
-processedVideos.remove(videoIds[4])
-
 def cleanUpEditingDirectories():
     videoClipFiles = os.listdir('videoclips')
     for filename in videoClipFiles:
@@ -50,7 +44,6 @@ def cleanUpEditingDirectories():
 while(True):
     # grab the 30 most recent games videos
     videoIds, videoTitles = yt.get30RecentVideos('SpotnetDota2')
-    print(videoTitles)
     for i in range(len(videoTitles) - 1, 0, -1):
         
         # only create compilation if its a new video
@@ -59,7 +52,7 @@ while(True):
             continue
 
         title = videoTitles[i]
-        print(title)
+        print('Proccessing: ' + title)
         watchId = videoIds[i]
         titleSections = title.split(' | ')
 
