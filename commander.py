@@ -9,11 +9,14 @@ import numpy as np
 import requests
 import urllib.request
 from difflib import get_close_matches
+import os
+import time
 
-# editor =  VideoEditer()
-# editor.combineClips('cum.mp4')
-# exit()
 SECONDS_PER_MINUTE = 60
+
+# when creating each clip, the videos can occational become corrupted. One solution is just
+# to recreate that specific clip, however if it fails x number of times, we just exit
+MAX_VIDEO_EDIT_RETRY_COUNT = 5
 
 yt = Youtube()
 editor =  VideoEditer()
@@ -25,15 +28,30 @@ videoIds, videoTitles = yt.get30RecentVideos('SpotnetDota2')
 
 
 processedVideos = set()
-# for(videoId in videoIds):
-#     processedVideos.add(videoId)
+for videoId in videoIds:
+    processedVideos.add(videoId)
 
-# print(processedVideos)
+processedVideos.remove(videoIds[0]) #TODO REMOVE
+processedVideos.remove(videoIds[1])
+processedVideos.remove(videoIds[2])
+processedVideos.remove(videoIds[3]) #TODO REMOVE
+processedVideos.remove(videoIds[4])
+
+def cleanUpEditingDirectories():
+    videoClipFiles = os.listdir('videoclips')
+    for filename in videoClipFiles:
+        os.remove('videoclips/' + filename)
+
+    rawClipFiles = os.listdir('rawVideos')
+    for filename in rawClipFiles:
+        os.remove('rawVideos/' + filename)
+
+
 while(True):
     # grab the 30 most recent games videos
     videoIds, videoTitles = yt.get30RecentVideos('SpotnetDota2')
-    
-    for i in range(0, len(videoTitles)):
+    print(videoTitles)
+    for i in range(len(videoTitles) - 1, 0, -1):
         
         # only create compilation if its a new video
         watchId = videoIds[i]
@@ -41,6 +59,7 @@ while(True):
             continue
 
         title = videoTitles[i]
+        print(title)
         watchId = videoIds[i]
         titleSections = title.split(' | ')
 
@@ -51,7 +70,7 @@ while(True):
         gameNumber = re.findall(r'\d+', re.split(' Game | game ', teams[1])[1])[0]
         numberOfGamesInSeries = re.findall(r'\d+', titleSections[1])[0]
 
-        # predict which team number this title is refering to based on the titles scraped from liquipedia list
+        # predict which team name this title is refering to based on the titles scraped from liquipedia list
         # these are used to get the url
         predictedTeam1Name = get_close_matches(team1, teamNames, cutoff = 0.00)[0]
         predictedTeam2Name = get_close_matches(team2, teamNames, cutoff = 0.00)[0]
@@ -62,9 +81,8 @@ while(True):
         team1Url = 'https://liquipedia.net/' + team1Url
         team2Url = 'https://liquipedia.net/' + team2Url
 
-        thumbnailPath = 'thumbnailCreation/' + team1 + ' vs ' + team2 + ' Game ' + gameNumber + '.png'
+        thumbnailPath = 'thumbnailCreation/' + team1 + ' vs ' + team2 + ' Game ' + gameNumber + '.jpeg'
         editor.createThumbnail(team1Url, team2Url, gameNumber, thumbnailPath) 
-
 
         # download the full video and begin video processing
         videoUrl = 'https://www.youtube.com/watch?v={}'.format(watchId)
@@ -73,19 +91,50 @@ while(True):
         # analyze the full video for timestamps of good clips + kill count
         clips, killsPerClip = dotaAnalyser.findClips('rawVideos/video.mp4')
 
-        # split the full video into individual clips based on analysis
-        editor.createClips(clips)
+        if(len(clips) == 0):
+            continue
 
-        # # add the dotaClipz logo to top right of video
-        editor.addLogoTopRight()   
+        # create the video clips based on the timestamp, using a max retry num
+        fileIdentifier = ''
+        retryNumber = 0
+        failedCreatingClips = False
+        for i in range(0, len(clips)):
+            # if hit max retry count, clean up all clips and go to next video
+            if(retryNumber >= MAX_VIDEO_EDIT_RETRY_COUNT):
+                print("\nClip {} failed to be created!\n".format(fileIdentifier))
+                cleanUpEditingDirectories()
+                failedCreatingClips = True
+                break
 
-        # # combines the video clips with the audio clips
-        editor.combineVideoAndAudio() 
+            timestamp = clips[i]
+            try:
+                editor.createClip(timestamp, fileIdentifier)
+                fileIdentifier += '1'
+            except Exception as e: 
+                print(e)
+                retryNumber += 1
+                i -= 1
+            
+        
+        # combine all these subclips into a final video
+        if(not failedCreatingClips):
+            try:
+                # delete file if it already exists
+                finalVideoName = team1 + ' vs ' + team2 + ' Game ' + str(gameNumber) + ' of ' + str(numberOfGamesInSeries) + '.mp4'
+                try:
+                    os.remove('finishedVideos/{}'.format(finalVideoName))
+                except OSError:
+                    pass
+                # combine all the individual clips together, then delete them
+                editor.combineClips(finalVideoName)
+                cleanUpEditingDirectories()
 
-        # combine the individual clips into one a full version
-        finalVideoName = team1 + ' vs ' + team2 + ' Game ' + str(gameNumber) + ' of ' + str(numberOfGamesInSeries) + '.mp4'
-        editor.combineClips(finalVideoName)
-
-
-
+            except Exception as e: 
+                print(e)
+                cleanUpEditingDirectories()
+                continue
+        
+        processedVideos.add(watchId)
     time.sleep(10 * SECONDS_PER_MINUTE)
+
+

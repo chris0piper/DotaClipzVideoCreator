@@ -3,6 +3,7 @@ import time
 import subprocess
 import logging
 import moviepy.editor as mp
+from moviepy.editor import *
 import os
 import ffmpeg
 import string
@@ -20,104 +21,109 @@ class VideoEditer:
         logging.getLogger().setLevel(logging.INFO)
 
 
-    def createClips(self, timeStamps):
+    def createClip(self, timestamp, fileId):
+        
         videoFileName = 'rawVideos/video.mp4'
         audioFileName = 'rawVideos/audio.mp4'
-        fileIdentifier = ''
-        for i in range(0, len(timeStamps)):
-            start = time.time()
-            timestamp = timeStamps[i]
 
-            videoClipFileName = 'videoclips/videoClip{}.mp4'.format(fileIdentifier)
-            audioClipFileName = 'audioclips/audioClip{}.mp4'.format(fileIdentifier)
+        videoClipFileName = 'videoclips/videoClip{}.mp4'.format(fileId)
+        audioClipFileName = 'audioclips/audioClip{}.wav'.format(fileId)
 
-            videoSplitCommand = ['ffmpeg', '-ss', str(timestamp[0]), '-i', videoFileName, '-t', str(int(timestamp[1]) - int(timestamp[0])), videoClipFileName]
-            audioSplitCommand = ['ffmpeg', '-ss', str(timestamp[0]), '-i', audioFileName, '-t', str(int(timestamp[1]) - int(timestamp[0])), audioClipFileName]
-            
-            # run the ffmpeg processes
-            subprocess.run(audioSplitCommand)
-            subprocess.run(videoSplitCommand)
-
-            fileIdentifier += '1'
-            end = time.time()
-            logging.info('Split {} in {} seconds'.format(videoClipFileName, int(end - start)))
+        start = time.time()
         
-        # delete these files to free space
-        os.remove(videoFileName)
-        os.remove(audioFileName)
+        fullVideo = VideoFileClip(videoFileName)
+        fullAudio = AudioFileClip(audioFileName)
+
+        # SPLIT THE VIDEO
+        videoClip = fullVideo.subclip(timestamp[0], timestamp[1])
+        audioClip = fullAudio.subclip(timestamp[0], timestamp[1])
+
+        # ADD THE LOGO
+        # load the logo at the correct length
+        logo = (mp.ImageClip("logos/DotaClipsLogoXWide.jpg")
+            .set_duration(videoClip.duration)
+            .resize(height=65)
+            .set_pos(("right","top")))
+        videoClip = mp.CompositeVideoClip([videoClip, logo])
+
+        # ADD AUDIO TO CLIP
+        videoClip = videoClip.set_audio(audioClip)
+
+        # save this subclip
+        videoClip.write_videofile(videoClipFileName)
+
+        # This tests to see if its a valid mp4 after these changes
+        # error will be caught outside of this method
+        vid = cv2.VideoCapture(videoClipFileName)
+
+        end = time.time()
+        logging.info('Created {} in {} seconds'.format(videoClipFileName, int(end - start)))
+        
+
+    # def addLogoTopRight(self):
+
+    #     files = os.listdir('videoclips')
+    #     outputFilenameId = ''
+    #     for f in range(0, len(files)):
+    #         filename = files[f]
+    #         # load the clip and set the logo video duration to video length
+    #         video = mp.VideoFileClip('videoclips/' + filename)
+
+    #         logo = (mp.ImageClip("logos/DotaClipsLogoXWide.jpg")
+    #             .set_duration(video.duration)
+    #             .resize(height=65)
+    #             .set_pos(("right","top")))
+
+    #         # create the new video with logo on 
+    #         final = mp.CompositeVideoClip([video, logo])
+    #         outputFilename = 'logoVideoClips/logoVideo{}.mp4'.format(outputFilenameId)
+    #         final.write_videofile(outputFilename)
+    #         outputFilenameId += '1'
+
+    #     for filename in files:
+    #         os.remove('videoclips/' + filename)
 
 
+    # def combineVideoAndAudio(self):
+    #     logoFiles = os.listdir('logoVideoClips')
+    #     outputFilenameId = ''
 
-    def addLogoTopRight(self):
+    #     for f in range(0, len(logoFiles)):
 
-        files = os.listdir('videoclips')
-        outputFilenameId = ''
-        for f in range(0, len(files)):
-            filename = files[f]
-            # load the clip and set the logo video duration to video length
-            video = mp.VideoFileClip('videoclips/' + filename)
+    #         videoFilename = 'logoVideoClips/' + logoFiles[f]
+    #         fileNumber = videoFilename.replace('logoVideoClips/logoVideo', '').replace('.mp4', '')
+    #         audioFileName = 'audioclips/audioClip{}.mp4'.format(fileNumber)
+    #         video_stream = ffmpeg.input(videoFilename)
+    #         audio_stream = ffmpeg.input(audioFileName)
 
-            logo = (mp.ImageClip("logos/DotaClipsLogoXWide.jpg")
-                .set_duration(video.duration)
-                .resize(height=65)
-                .set_pos(("right","top")))
+    #         ffmpeg.output(audio_stream, video_stream, 'combinedClips/out{}.mp4'.format(outputFilenameId)).run()
 
-            # create the new video with logo on 
-            final = mp.CompositeVideoClip([video, logo])
-            outputFilename = 'logoVideoClips/logoVideo{}.mp4'.format(outputFilenameId)
-            final.write_videofile(outputFilename)
-            outputFilenameId += '1'
+    #         outputFilenameId += '1'
 
-        for filename in files:
-            os.remove('videoclips/' + filename)
-
-
-    def combineVideoAndAudio(self):
-        logoFiles = os.listdir('logoVideoClips')
-        outputFilenameId = ''
-
-        for f in range(0, len(logoFiles)):
-
-            videoFilename = 'logoVideoClips/' + logoFiles[f]
-            fileNumber = videoFilename.replace('logoVideoClips/logoVideo', '').replace('.mp4', '')
-            audioFileName = 'audioclips/audioClip{}.mp4'.format(fileNumber)
-            video_stream = ffmpeg.input(videoFilename)
-            audio_stream = ffmpeg.input(audioFileName)
-
-            ffmpeg.output(audio_stream, video_stream, 'combinedClips/out{}.mp4'.format(outputFilenameId)).run()
-            outputFilenameId += '1'
-
-        # delete the individual video and audio clips 
-        files = os.listdir('logoVideoClips')
-        for filename in files:
-            os.remove('logoVideoClips/' + filename)
-        files = os.listdir('audioclips')
-        for filename in files:
-            os.remove('audioclips/' + filename)
+    #     # delete the individual video and audio clips 
+    #     files = os.listdir('logoVideoClips')
+    #     for filename in files:
+    #         os.remove('logoVideoClips/' + filename)
+    #     files = os.listdir('audioclips')
+    #     for filename in files:
+    #         os.remove('audioclips/' + filename)
 
     def combineClips(self, finalFilename):
-        
-        # combineClipsCommand = ['find', 'combinedClips/*.mp4', '|', 'sed', '\'s:\ :\\\ :g\'', '|', 'sed', '\'s/^/file /\'', '>', 'combinedClips/fl.txt;', 'sort', '-r', 'combinedClips/fl.txt', '|', 'tee', 'combinedClips/sorted.txt;', 'ffmpeg', '-f', 'concat', '-i', 'combinedClips/sorted.txt', '-c', 'copy', '\"finishedVideo/{}\";'.format(finalFilename), 'rm', 'combinedClips/fl.txt;', 'rm', 'combinedClips/sorted.txt']
-        
+                
         # write all files in dir to .txt
-        with open('combinedClips/sorted.txt', 'w') as f:
-            filenames = os.listdir('combinedClips/') 
+        with open('videoclips/sorted.txt', 'w') as f:
+            filenames = os.listdir('videoclips/') 
             for filename in filenames:
                 f.write('file {}\n'.format(filename))
             f.close()
   
 
         # combine all the files in the dir
-        os.chdir('/home/ec2-user/workspace/Twitch2Youtube/combinedClips/')
+        os.chdir('/home/ec2-user/workspace/Twitch2Youtube/videoclips/')
         combineFiles = ['ffmpeg -f concat -i sorted.txt -c copy \"/home/ec2-user/workspace/Twitch2Youtube/finishedVideos/{}\"'.format(finalFilename)]
         subprocess.run(combineFiles, shell=True)
         os.chdir('/home/ec2-user/workspace/Twitch2Youtube/')
-
-        # remove all the old clips
-        files = os.listdir('combinedClips')
-        for filename in files:
-            os.remove('combinedClips/' + filename)
-
+        
     def createThumbnail(self, urlLeft, urlRight, gameNumber, outputFileName):
 
         # download the team logos
@@ -131,7 +137,7 @@ class VideoEditer:
         #Read the three images
         image1 = Image.open('thumbnailCreation/leftTeam.png')
         image2 = Image.open('thumbnailCreation/rightTeam.png')
-        background = Image.open('logos/background{}.PNG'.format(gameNumber))
+        background = Image.open('logos/background{}.jpeg'.format(gameNumber))
 
         size1 = image1.size
         size2 = image2.size
@@ -177,8 +183,21 @@ class VideoEditer:
 
         # create white background and past the newly sized logos. Then add background on top
         new_image = Image.new('RGB',background_size, (250,250,250))
+        new_image.paste(background, (0,0))
         new_image.paste(image1,(0,int(topLeftY)), image1)
         new_image.paste(image2,(int(rightX),int(topRightY)), image2)
-        new_image.paste(background, (0,0), background)
-        new_image.save(outputFileName,"PNG")
+        new_image.save(outputFileName,"jpeg")
+
+    # def combineClips(self, finalFileName):
+
+        # finalVideo = VideoFileClip("videoclips/videoClip.mp4")
+
+        # clips = os.listdir('videoclips')
+        # for i in range(1, len(clips)):
+        #     filename = clips[i]
+        #     print(filename)
+        #     clipToAppend = VideoFileClip("videoclips/{}".format(filename))
+        #     finalVideo = concatenate_videoclips([finalVideo, clipToAppend])
+        # finalVideo.write_videofile('finishedVideos/{}'.format(finalFileName))
+
 

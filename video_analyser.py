@@ -148,7 +148,7 @@ class VideoAnalyser:
                     # The exact second of the start of the game
                     currentTime = int(frameCount / FRAMES_PER_SECOND)
                     if(drafting): 
-                        rawClips.append([max(0, currentTime - 25), currentTime])
+                        rawClips.append([max(0, currentTime - 25), max(0, currentTime - 1)])
                         killsPerClip.append(0)
 
                         # once the game starts, we want to take smaller steps through video
