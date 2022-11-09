@@ -58,56 +58,8 @@ class VideoEditer:
 
         end = time.time()
         logging.info('Created {} in {} seconds'.format(videoClipFileName, int(end - start)))
-        
 
-    # def addLogoTopRight(self):
-
-    #     files = os.listdir('videoclips')
-    #     outputFilenameId = ''
-    #     for f in range(0, len(files)):
-    #         filename = files[f]
-    #         # load the clip and set the logo video duration to video length
-    #         video = mp.VideoFileClip('videoclips/' + filename)
-
-    #         logo = (mp.ImageClip("logos/DotaClipsLogoXWide.jpg")
-    #             .set_duration(video.duration)
-    #             .resize(height=65)
-    #             .set_pos(("right","top")))
-
-    #         # create the new video with logo on 
-    #         final = mp.CompositeVideoClip([video, logo])
-    #         outputFilename = 'logoVideoClips/logoVideo{}.mp4'.format(outputFilenameId)
-    #         final.write_videofile(outputFilename)
-    #         outputFilenameId += '1'
-
-    #     for filename in files:
-    #         os.remove('videoclips/' + filename)
-
-
-    # def combineVideoAndAudio(self):
-    #     logoFiles = os.listdir('logoVideoClips')
-    #     outputFilenameId = ''
-
-    #     for f in range(0, len(logoFiles)):
-
-    #         videoFilename = 'logoVideoClips/' + logoFiles[f]
-    #         fileNumber = videoFilename.replace('logoVideoClips/logoVideo', '').replace('.mp4', '')
-    #         audioFileName = 'audioclips/audioClip{}.mp4'.format(fileNumber)
-    #         video_stream = ffmpeg.input(videoFilename)
-    #         audio_stream = ffmpeg.input(audioFileName)
-
-    #         ffmpeg.output(audio_stream, video_stream, 'combinedClips/out{}.mp4'.format(outputFilenameId)).run()
-
-    #         outputFilenameId += '1'
-
-    #     # delete the individual video and audio clips 
-    #     files = os.listdir('logoVideoClips')
-    #     for filename in files:
-    #         os.remove('logoVideoClips/' + filename)
-    #     files = os.listdir('audioclips')
-    #     for filename in files:
-    #         os.remove('audioclips/' + filename)
-
+  
     def combineClips(self, finalFilename):
                 
         # write all files in dir to .txt
@@ -187,17 +139,4 @@ class VideoEditer:
         new_image.paste(image1,(0,int(topLeftY)), image1)
         new_image.paste(image2,(int(rightX),int(topRightY)), image2)
         new_image.save(outputFileName,"jpeg")
-
-    # def combineClips(self, finalFileName):
-
-        # finalVideo = VideoFileClip("videoclips/videoClip.mp4")
-
-        # clips = os.listdir('videoclips')
-        # for i in range(1, len(clips)):
-        #     filename = clips[i]
-        #     print(filename)
-        #     clipToAppend = VideoFileClip("videoclips/{}".format(filename))
-        #     finalVideo = concatenate_videoclips([finalVideo, clipToAppend])
-        # finalVideo.write_videofile('finishedVideos/{}'.format(finalFileName))
-
 

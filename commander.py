@@ -18,13 +18,16 @@ SECONDS_PER_MINUTE = 60
 # to recreate that specific clip, however if it fails x number of times, we just exit
 MAX_VIDEO_EDIT_RETRY_COUNT = 5
 
+# location of where the raw video comes from
+DOWNLOAD_LOCATION = "SpotnetDota2"
+
 yt = Youtube()
 editor =  VideoEditer()
 dotaAnalyser =  VideoAnalyser()
 
 # grab the 30 most recent games videos
 teamNames, logoUrls = yt.getAllTeamNamesAndLogos()
-videoIds, videoTitles = yt.get30RecentVideos('SpotnetDota2')
+videoIds, videoTitles = yt.get30RecentVideos(DOWNLOAD_LOCATION)
 
 
 processedVideos = set()
@@ -43,7 +46,7 @@ def cleanUpEditingDirectories():
 
 while(True):
     # grab the 30 most recent games videos
-    videoIds, videoTitles = yt.get30RecentVideos('SpotnetDota2')
+    videoIds, videoTitles = yt.get30RecentVideos(DOWNLOAD_LOCATION)
     for i in range(len(videoTitles) - 1, 0, -1):
         
         # only create compilation if its a new video
