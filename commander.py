@@ -3,6 +3,8 @@
 from video_analyser import VideoAnalyser
 from youtube import Youtube
 from video_editer import VideoEditer
+from S3 import S3
+
 import re
 import cv2
 import numpy as np
@@ -24,6 +26,7 @@ DOWNLOAD_LOCATION = "SpotnetDota2"
 yt = Youtube()
 editor =  VideoEditer()
 dotaAnalyser =  VideoAnalyser()
+s3 = S3()
 
 # grab the 30 most recent games videos
 teamNames, logoUrls = yt.getAllTeamNamesAndLogos()
@@ -31,8 +34,9 @@ videoIds, videoTitles = yt.get30RecentVideos(DOWNLOAD_LOCATION)
 
 
 processedVideos = set()
-for videoId in videoIds:
-    processedVideos.add(videoId)
+# for videoId in videoIds:
+#     processedVideos.add(videoId)
+# processedVideos.remove(videoIds[0])
 
 def cleanUpEditingDirectories():
     videoClipFiles = os.listdir('videoclips')
@@ -66,6 +70,8 @@ while(True):
         gameNumber = re.findall(r'\d+', re.split(' Game | game ', teams[1])[1])[0]
         numberOfGamesInSeries = re.findall(r'\d+', titleSections[1])[0]
 
+        baseFileName = team1 + ' vs ' + team2 + ' Game ' + str(gameNumber) + ' of ' + str(numberOfGamesInSeries) 
+
         # predict which team name this title is refering to based on the titles scraped from liquipedia list
         # these are used to get the url
         predictedTeam1Name = get_close_matches(team1, teamNames, cutoff = 0.00)[0]
@@ -77,9 +83,11 @@ while(True):
         team1Url = 'https://liquipedia.net/' + team1Url
         team2Url = 'https://liquipedia.net/' + team2Url
 
-        thumbnailPath = 'thumbnailCreation/' + team1 + ' vs ' + team2 + ' Game ' + gameNumber + '.jpeg'
+        # create the thumbnail and upload it to s3
+        thumbnailPath = 'thumbnailCreation/' + baseFileName + '.jpeg'
         editor.createThumbnail(team1Url, team2Url, gameNumber, thumbnailPath) 
-
+        s3.upload_file(thumbnailPath, 'pending-youtube-upload', 'dotaClipzThumbnails/{}.jpg'.format(baseFileName))
+                
         # download the full video and begin video processing
         videoUrl = 'https://www.youtube.com/watch?v={}'.format(watchId)
         yt.downloadVideo1080p(videoUrl)
@@ -116,13 +124,21 @@ while(True):
         if(not failedCreatingClips):
             try:
                 # delete file if it already exists
-                finalVideoName = team1 + ' vs ' + team2 + ' Game ' + str(gameNumber) + ' of ' + str(numberOfGamesInSeries) + '.mp4'
+                finalVideoName = baseFileName + '.mp4'
                 try:
                     os.remove('finishedVideos/{}'.format(finalVideoName))
                 except OSError:
                     pass
                 # combine all the individual clips together, then delete them
                 editor.combineClips(finalVideoName)
+                
+                # upload this final clip to s3 to be processed by another host
+                s3.upload_file('finishedVideos/{}'.format(finalVideoName), 'pending-youtube-upload', 'dotaClipz/{}'.format(finalVideoName))
+                
+                try:
+                    os.remove('finishedVideos/{}'.format(finalVideoName))
+                except OSError:
+                    pass
                 cleanUpEditingDirectories()
 
             except Exception as e: 

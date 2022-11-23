@@ -21,7 +21,7 @@ Eventually we will use the youtube data API to upload these compelations automat
 ## Dependencies
 The propper version of FFMPEG for ur system needs to be installed and the exe needs to either be in /bin or your path. For me this was ffmpeg-release-arm64-static.tar.xz 
 
-Need 4 folders in base dir, "finishedVideos", "logs", "thumbnailCreation", "videoClips"
+Need 5 folders in base dir, "finishedVideos", "logs", "thumbnailCreation", "videoClips", "rawVideos"
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

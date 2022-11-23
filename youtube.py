@@ -85,3 +85,6 @@ class Youtube:
             logoUrls.append(image.get('src'))
         return teamNames, logoUrls
 
+    # def uploadVideo(self, filename):
+
+
