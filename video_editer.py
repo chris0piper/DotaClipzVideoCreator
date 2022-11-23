@@ -66,6 +66,8 @@ class VideoEditer:
         with open('videoclips/sorted.txt', 'w') as f:
             filenames = os.listdir('videoclips/') 
             for filename in filenames:
+                if('sorted' in filename):
+                    continue
                 f.write('file {}\n'.format(filename))
             f.close()
   
