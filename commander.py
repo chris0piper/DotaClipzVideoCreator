@@ -1,5 +1,3 @@
-
-
 from video_analyser import VideoAnalyser
 from youtube import Youtube
 from video_editer import VideoEditer
@@ -13,6 +11,7 @@ import urllib.request
 from difflib import get_close_matches
 import os
 import time
+import traceback
 
 SECONDS_PER_MINUTE = 60
 
@@ -36,7 +35,6 @@ videoIds, videoTitles = yt.get30RecentVideos(DOWNLOAD_LOCATION)
 processedVideos = set()
 # for videoId in videoIds:
 #     processedVideos.add(videoId)
-# processedVideos.remove(videoIds[0])
 
 def cleanUpEditingDirectories():
     videoClipFiles = os.listdir('videoclips')
@@ -57,18 +55,41 @@ while(True):
         watchId = videoIds[i]
         if(watchId in processedVideos):
             continue
-
+        
         title = videoTitles[i]
         print('Proccessing: ' + title)
-        watchId = videoIds[i]
-        titleSections = title.split(' | ')
 
-        teams = titleSections[0].split(' vs ')
-        team1 = re.split(' Game | game | All Games | all games | All games ', teams[0])[0]
-        team2 = re.split(' Game | game ',  teams[1])[0]
+        try:
+            # only act on full length videos
+            if('highlight' in title.lower()):
+                processedVideos.add(watchId)
+                continue
+            
+            # remove the spotnet logo from title
+            title = re.sub(r'\|?\s?Spotnet Dota 2\s?\|?', '', title)
 
-        gameNumber = re.findall(r'\d+', re.split(' Game | game ', teams[1])[1])[0]
-        numberOfGamesInSeries = re.findall(r'\d+', titleSections[1])[0]
+            # Grab the game number from the title
+            matches = re.findall(r'Game \d+', title)
+            gameNumber = matches[0].split()[1]
+            title = re.sub(r'Game \d+', '', title)
+
+            # Grab the number of games in series
+            match = re.search(r'Bo(\d)', title)
+            numberOfGamesInSeries = match.group(1)
+            title = re.sub(r'Bo\d+', '', title)
+
+            # grab the two team names
+            titleSections = title.split(' | ')
+            for section in titleSections:
+                if bool(re.search(r'\bvs\.?\s?\b', section, re.IGNORECASE)):
+                    teams = re.split(r'\bvs\.?\s?\b', section, flags=re.IGNORECASE)
+                    team1 = teams[0]
+                    team2 = teams[1]
+        except Exception as e:
+            traceback.print_exc()
+            processedVideos.add(watchId)
+            continue
+
 
         baseFileName = team1 + ' vs ' + team2 + ' Game ' + str(gameNumber) + ' of ' + str(numberOfGamesInSeries) 
 
@@ -86,8 +107,8 @@ while(True):
         # create the thumbnail and upload it to s3
         thumbnailPath = 'thumbnailCreation/' + baseFileName + '.jpeg'
         editor.createThumbnail(team1Url, team2Url, gameNumber, thumbnailPath) 
-        s3.upload_file(thumbnailPath, 'pending-youtube-upload', 'dotaClipzThumbnails/{}.jpg'.format(baseFileName))
-                
+        s3.upload_file(thumbnailPath, 'pending-youtube-upload', 'dotaClipzThumbnails/{}.jpeg'.format(baseFileName))
+
         # download the full video and begin video processing
         videoUrl = 'https://www.youtube.com/watch?v={}'.format(watchId)
         yt.downloadVideo1080p(videoUrl)
@@ -134,7 +155,6 @@ while(True):
                 
                 # upload this final clip to s3 to be processed by another host
                 s3.upload_file('finishedVideos/{}'.format(finalVideoName), 'pending-youtube-upload', 'dotaClipz/{}'.format(finalVideoName))
-                
                 try:
                     os.remove('finishedVideos/{}'.format(finalVideoName))
                 except OSError:
